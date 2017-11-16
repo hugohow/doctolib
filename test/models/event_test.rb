@@ -4,15 +4,8 @@ require 'test_helper'
 
 class EventTest < ActiveSupport::TestCase
 
-  test "Si starts_at > ends_at" do
 
-  end
-
-  test "mauvaise type d'input" do
-
-  end
-
-  test "date dimanche input" do
+  test "Test with Sunday as day week (input)" do
 
     Event.create! kind: 'opening', starts_at: DateTime.parse("2014-08-11 15:50"), ends_at: DateTime.parse("2014-08-11 18:30"), weekly_recurring: true
 
@@ -21,7 +14,7 @@ class EventTest < ActiveSupport::TestCase
     assert_equal Date.new(2014, 8, 11), availabilities[1][:date]
   end
 
-  test "date dimanche event" do
+  test "Test with Sunday as day week (event)" do
 
     Event.create! kind: 'opening', starts_at: DateTime.parse("2014-08-10 15:50"), ends_at: DateTime.parse("2014-08-10 18:30"), weekly_recurring: true
 
@@ -29,10 +22,10 @@ class EventTest < ActiveSupport::TestCase
     assert_equal ["16:00", "16:30", "17:00", "17:30", "18:00", "18:30"], availabilities[6][:slots]
     assert_equal Date.new(2014, 8, 17), availabilities[6][:date]
   end
-  test "date dimanche les deux" do
+
+  test "Test with Sunday as day week for both" do
 
     Event.create! kind: 'opening', starts_at: DateTime.parse("2014-08-10 15:50"), ends_at: DateTime.parse("2014-08-10 18:30"), weekly_recurring: true
-
 
     availabilities = Event.availabilities DateTime.parse("2014-08-10")
     assert_equal ["16:00", "16:30", "17:00", "17:30", "18:00", "18:30"], availabilities[0][:slots]
@@ -41,7 +34,7 @@ class EventTest < ActiveSupport::TestCase
 
 
 
-  test "Weekly recurring works" do
+  test "Test with only events weekly recurring" do
 
     Event.create! kind: 'opening', starts_at: DateTime.parse("2014-08-10 15:50"), ends_at: DateTime.parse("2014-08-10 18:30"), weekly_recurring: true
     Event.create! kind: 'opening', starts_at: DateTime.parse("2014-08-05 15:50"), ends_at: DateTime.parse("2014-08-05 18:30"), weekly_recurring: true
@@ -53,7 +46,7 @@ class EventTest < ActiveSupport::TestCase
 
   end
 
-  test "Opening works" do
+  test "Test with only opening events" do
 
     Event.create! kind: 'opening', starts_at: DateTime.parse("2014-08-10 15:50"), ends_at: DateTime.parse("2014-08-10 18:30")
     Event.create! kind: 'opening', starts_at: DateTime.parse("2014-08-05 15:50"), ends_at: DateTime.parse("2014-08-05 18:30")
@@ -65,7 +58,7 @@ class EventTest < ActiveSupport::TestCase
     assert_equal Date.new(2014, 8, 12), availabilities[2][:date]
   end
 
-  test "appointment considered" do
+  test "Test to see if appointment event are filtered" do
     Event.create! kind: 'opening', starts_at: DateTime.parse("2014-08-10 15:50"), ends_at: DateTime.parse("2014-08-10 18:30")
     Event.create! kind: 'appointment', starts_at: DateTime.parse("2014-08-10 17:50"), ends_at: DateTime.parse("2014-08-10 18:30")
     availabilities = Event.availabilities DateTime.parse("2014-08-10")
@@ -73,7 +66,7 @@ class EventTest < ActiveSupport::TestCase
     assert_equal ["16:00", "16:30", "17:00", "17:30"], availabilities[0][:slots]
   end
 
-  test "Start_at and ends_at not the same day" do
+  test "Test the case where start_at and ends_at not the same day" do
     Event.create! kind: 'opening', starts_at: DateTime.parse("2014-08-04 23:30"), ends_at: DateTime.parse("2014-08-05 03:30"), weekly_recurring: true
     availabilities = Event.availabilities DateTime.parse("2014-08-10")
     assert_equal [], availabilities[0][:slots]

@@ -36,7 +36,7 @@ class Event < ApplicationRecord
     events_weekly_recurring = Event.where(weekly_recurring: true)
     add_availabilities(events_weekly_recurring, appointment_duration, date_time, availabilities)
 
-    # second the opening events in the good interval
+    # second the opening events in the good intervall
     events_opening = Event.where(weekly_recurring: [false, nil]).where(kind: "opening").where("ends_at < ?", date_time + 7.days).where("starts_at > ?", date_time)
     add_availabilities(events_opening, appointment_duration, date_time, availabilities)
 
@@ -49,18 +49,13 @@ class Event < ApplicationRecord
 
 
   def self.define_date(date_time, time)
-      if time.wday === 0 and date_time.to_date.wday == 0
+      # If it's Sunday (Date.commercial which don't accept 0)
+      if time.wday == 0
         Date.commercial(date_time.to_date.cwyear, date_time.to_date.cweek, 7)
-      elsif time.wday === 0
-        Date.commercial(date_time.to_date.cwyear, date_time.to_date.cweek, 7)
-      elsif date_time.to_date.wday == 0
-        if date_time.to_date.cweek === 52
-          Date.commercial(date_time.to_date.cwyear + 1, 1, time.wday)
-        else
-          Date.commercial(date_time.to_date.cwyear, date_time.to_date.cweek + 1, time.wday)
-        end
-      elsif time.wday < date_time.to_date.wday
-        if date_time.to_date.cweek === 52
+      # If it's a day week before the day week input, add a week
+      elsif date_time.to_date.wday == 0 or time.wday < date_time.to_date.wday
+        # If it's the latest week of the year
+        if date_time.to_date.cweek == 52
           Date.commercial(date_time.to_date.cwyear + 1, 1, time.wday)
         else
           Date.commercial(date_time.to_date.cwyear, date_time.to_date.cweek + 1, time.wday)
@@ -73,10 +68,9 @@ class Event < ApplicationRecord
   def self.add_availabilities(events, appointment_duration, date_time, availabilities)
     events.each do |event, index|
       (event.starts_at.to_i..event.ends_at.to_i).step(appointment_duration) do |hour, i|
-        next if event.ends_at.to_i === hour
+        next if event.ends_at.to_i == hour
         # round the time of appointment
         time = Time.at((hour.to_f / appointment_duration).round * appointment_duration).utc
-        wday = Date.new(hour).wday
         date = define_date(date_time, time)
         availabilities[date.strftime("%Y/%m/%d")][:slots].push(time.strftime("%k:%M").strip).uniq!
       end
@@ -86,10 +80,9 @@ class Event < ApplicationRecord
   def self.delete_availabilities(events, appointment_duration, date_time, availabilities)
     events.each do |event, index|
       (event.starts_at.to_i..event.ends_at.to_i).step(appointment_duration) do |hour, i|
-        next if event.ends_at.to_i === hour
+        next if event.ends_at.to_i == hour
         # round the time of appointment
         time = Time.at((hour.to_f / appointment_duration).round * appointment_duration).utc
-        wday = Date.new(hour).wday
         date = define_date(date_time, time)
         availabilities[date.strftime("%Y/%m/%d")][:slots].delete(time.strftime("%k:%M").strip)
       end
