@@ -2,7 +2,14 @@ class Event < ApplicationRecord
   validates :kind, presence: true, inclusion: { in: %w(opening appointment), message: "%{value} is not a valid kind" }
   validates :starts_at, presence: true
   validates :ends_at, presence: true
-  validate :starts_at_cannot_be_grather_than_ends_at
+  validate :starts_at_cannot_be_grather_than_ends_at, :weekly_recurring_have_to_be_false_if_appointment
+
+
+  def weekly_recurring_have_to_be_false_if_appointment
+    if kind == "appointment" and weekly_recurring == true
+      errors.add(:weekly_recurring, "cannot be true")
+    end
+  end
 
   def starts_at_cannot_be_grather_than_ends_at
     if starts_at > ends_at
@@ -14,10 +21,10 @@ class Event < ApplicationRecord
   def self.availabilities(date_time = DateTime.now)
     raise Exception.new("Bad type of input") if !date_time.is_a?(DateTime)
     # initialization
-    results = {}
+    availabilities = {}
     7.times.each do |i|
       date = date_time + i.days
-      results[date.strftime("%Y/%m/%d")] = {
+      availabilities[date.strftime("%Y/%m/%d")] = {
         date: date.to_date,
         slots: []
       }
@@ -27,17 +34,17 @@ class Event < ApplicationRecord
 
     # first the events where weekly_recurring is true
     events_weekly_recurring = Event.where(weekly_recurring: true)
-    # add_results(events_weekly_recurring, results)
-    add_results(events_weekly_recurring, appointment_duration, date_time, results)
+    add_availabilities(events_weekly_recurring, appointment_duration, date_time, availabilities)
 
     # second the opening events in the good interval
-    events_opening = Event.where(kind: "opening").where("ends_at < ?", date_time + 7.days).where("starts_at > ?", date_time)
-    add_results(events_opening, appointment_duration, date_time, results)
+    events_opening = Event.where(weekly_recurring: [false, nil]).where(kind: "opening").where("ends_at < ?", date_time + 7.days).where("starts_at > ?", date_time)
+    add_availabilities(events_opening, appointment_duration, date_time, availabilities)
+
     # last we delete when there is an appointment
     events_appointment = Event.where(kind: "appointment").where("ends_at < ?", date_time + 7.days).where("starts_at > ?", date_time)
-    delete_results(events_appointment, appointment_duration, date_time, results)
+    delete_availabilities(events_appointment, appointment_duration, date_time, availabilities)
 
-    return results.values
+    return availabilities.values
   end
 
 
@@ -63,7 +70,7 @@ class Event < ApplicationRecord
       end
   end
 
-  def self.add_results(events, appointment_duration, date_time, results)
+  def self.add_availabilities(events, appointment_duration, date_time, availabilities)
     events.each do |event, index|
       (event.starts_at.to_i..event.ends_at.to_i).step(appointment_duration) do |hour, i|
         next if event.ends_at.to_i === hour
@@ -71,12 +78,12 @@ class Event < ApplicationRecord
         time = Time.at((hour.to_f / appointment_duration).round * appointment_duration).utc
         wday = Date.new(hour).wday
         date = define_date(date_time, time)
-        results[date.strftime("%Y/%m/%d")][:slots].push(time.strftime("%k:%M").strip).uniq!
+        availabilities[date.strftime("%Y/%m/%d")][:slots].push(time.strftime("%k:%M").strip).uniq!
       end
     end
   end
 
-  def self.delete_results(events, appointment_duration, date_time, results)
+  def self.delete_availabilities(events, appointment_duration, date_time, availabilities)
     events.each do |event, index|
       (event.starts_at.to_i..event.ends_at.to_i).step(appointment_duration) do |hour, i|
         next if event.ends_at.to_i === hour
@@ -84,7 +91,7 @@ class Event < ApplicationRecord
         time = Time.at((hour.to_f / appointment_duration).round * appointment_duration).utc
         wday = Date.new(hour).wday
         date = define_date(date_time, time)
-        results[date.strftime("%Y/%m/%d")][:slots].delete(time.strftime("%k:%M").strip)
+        availabilities[date.strftime("%Y/%m/%d")][:slots].delete(time.strftime("%k:%M").strip)
       end
     end
   end
