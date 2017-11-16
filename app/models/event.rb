@@ -18,12 +18,12 @@ class Event < ApplicationRecord
   end
 
 
-  def self.availabilities(date_time = DateTime.now)
-    raise Exception.new("Bad type of input") if !date_time.is_a?(DateTime)
+  def self.availabilities(date_time_input = DateTime.now)
+    raise Exception.new("Bad type of input") if !date_time_input.is_a?(DateTime)
     # initialization
     availabilities = {}
     7.times.each do |i|
-      date = date_time + i.days
+      date = date_time_input + i.days
       availabilities[date.strftime("%Y/%m/%d")] = {
         date: date.to_date,
         slots: []
@@ -34,57 +34,57 @@ class Event < ApplicationRecord
 
     # first the events where weekly_recurring is true
     events_weekly_recurring = Event.where(weekly_recurring: true)
-    add_availabilities(events_weekly_recurring, appointment_duration, date_time, availabilities)
+    add_availabilities(events_weekly_recurring, appointment_duration, date_time_input, availabilities)
 
     # second the opening events in the good intervall
-    events_opening = Event.where(weekly_recurring: [false, nil]).where(kind: "opening").where("ends_at < ?", date_time + 7.days).where("starts_at > ?", date_time)
-    add_availabilities(events_opening, appointment_duration, date_time, availabilities)
+    events_opening = Event.where(weekly_recurring: [false, nil]).where(kind: "opening").where("ends_at < ?", date_time_input + 7.days).where("starts_at > ?", date_time_input)
+    add_availabilities(events_opening, appointment_duration, date_time_input, availabilities)
 
     # last we delete when there is an appointment
-    events_appointment = Event.where(kind: "appointment").where("ends_at < ?", date_time + 7.days).where("starts_at > ?", date_time)
-    delete_availabilities(events_appointment, appointment_duration, date_time, availabilities)
+    events_appointment = Event.where(kind: "appointment").where("ends_at < ?", date_time_input + 7.days).where("starts_at > ?", date_time_input)
+    delete_availabilities(events_appointment, appointment_duration, date_time_input, availabilities)
 
     return availabilities.values
   end
 
 
-  def self.define_date(date_time, time)
+  def self.define_date_event(date_time_input, time)
       # If it's Sunday (Date.commercial which don't accept 0)
       if time.wday == 0
-        Date.commercial(date_time.to_date.cwyear, date_time.to_date.cweek, 7)
+        Date.commercial(date_time_input.to_date.cwyear, date_time_input.to_date.cweek, 7)
       # If it's a day week before the day week input, add a week
-      elsif date_time.to_date.wday == 0 or time.wday < date_time.to_date.wday
+    elsif date_time_input.to_date.wday == 0 or time.wday < date_time_input.to_date.wday
         # If it's the latest week of the year
-        if date_time.to_date.cweek == 52
-          Date.commercial(date_time.to_date.cwyear + 1, 1, time.wday)
+        if date_time_input.to_date.cweek == 52
+          Date.commercial(date_time_input.to_date.cwyear + 1, 1, time.wday)
         else
-          Date.commercial(date_time.to_date.cwyear, date_time.to_date.cweek + 1, time.wday)
+          Date.commercial(date_time_input.to_date.cwyear, date_time_input.to_date.cweek + 1, time.wday)
         end
       else
-        Date.commercial(date_time.to_date.cwyear, date_time.to_date.cweek, time.wday)
+        Date.commercial(date_time_input.to_date.cwyear, date_time_input.to_date.cweek, time.wday)
       end
   end
 
-  def self.add_availabilities(events, appointment_duration, date_time, availabilities)
+  def self.add_availabilities(events, appointment_duration, date_time_input, availabilities)
     events.each do |event, index|
       (event.starts_at.to_i..event.ends_at.to_i).step(appointment_duration) do |hour, i|
         next if event.ends_at.to_i == hour
         # round the time of appointment
         time = Time.at((hour.to_f / appointment_duration).round * appointment_duration).utc
-        date = define_date(date_time, time)
-        availabilities[date.strftime("%Y/%m/%d")][:slots].push(time.strftime("%k:%M").strip).uniq!
+        date_event = define_date_event(date_time_input, time)
+        availabilities[date_event.strftime("%Y/%m/%d")][:slots].push(time.strftime("%k:%M").strip).uniq!
       end
     end
   end
 
-  def self.delete_availabilities(events, appointment_duration, date_time, availabilities)
+  def self.delete_availabilities(events, appointment_duration, date_time_input, availabilities)
     events.each do |event, index|
       (event.starts_at.to_i..event.ends_at.to_i).step(appointment_duration) do |hour, i|
         next if event.ends_at.to_i == hour
         # round the time of appointment
         time = Time.at((hour.to_f / appointment_duration).round * appointment_duration).utc
-        date = define_date(date_time, time)
-        availabilities[date.strftime("%Y/%m/%d")][:slots].delete(time.strftime("%k:%M").strip)
+        date_event = define_date_event(date_time_input, time)
+        availabilities[date_event.strftime("%Y/%m/%d")][:slots].delete(time.strftime("%k:%M").strip)
       end
     end
   end
