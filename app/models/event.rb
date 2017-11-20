@@ -50,19 +50,19 @@ class Event < ApplicationRecord
 
   def self.define_date_event(date_time_input, time)
       # If it's Sunday (Date.commercial which don't accept 0)
-      if time.wday == 0
-        Date.commercial(date_time_input.to_date.cwyear, date_time_input.to_date.cweek, 7)
+    if time.wday == 0
+      Date.commercial(date_time_input.to_date.cwyear, date_time_input.to_date.cweek, 7)
       # If it's a day week before the day week input, add a week
     elsif date_time_input.to_date.wday == 0 or time.wday < date_time_input.to_date.wday
-        # If it's the latest week of the year
-        if date_time_input.to_date.cweek == 52
-          Date.commercial(date_time_input.to_date.cwyear + 1, 1, time.wday)
-        else
-          Date.commercial(date_time_input.to_date.cwyear, date_time_input.to_date.cweek + 1, time.wday)
-        end
+      # If it's the latest week of the year
+      if date_time_input.to_date.cweek == 52
+        Date.commercial(date_time_input.to_date.cwyear + 1, 1, time.wday)
       else
-        Date.commercial(date_time_input.to_date.cwyear, date_time_input.to_date.cweek, time.wday)
+        Date.commercial(date_time_input.to_date.cwyear, date_time_input.to_date.cweek + 1, time.wday)
       end
+    else
+      Date.commercial(date_time_input.to_date.cwyear, date_time_input.to_date.cweek, time.wday)
+    end
   end
 
   def self.add_availabilities(events, appointment_duration, date_time_input, availabilities)
