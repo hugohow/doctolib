@@ -1,7 +1,7 @@
 
 ## Result
 
-I passed the test, I've been invited to the next round interview.
+I passed the test, I was invited to the next round interview.
 
 ## Technical Test @ Doctolib
 
